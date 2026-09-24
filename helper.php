@@ -1,16 +1,19 @@
-<?php
+<?php // phpcs:ignore PSR1.Files.SideEffects.FoundWithSymbols
+
 /**
  * DokuWiki Plugin parserfunctions (Helper Component)
- * 
+ *
  * @license  GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author   Daniel "Nerun" Rodrigues <danieldiasr@gmail.com>
- * @created  Tue, 01 jul 2025 15:06:42 -0300 
+ * @created  Tue, 01 jul 2025 15:06:42 -0300
  */
+
+use dokuwiki\Extension\Plugin;
 
 if (!defined('DOKU_INC')) die();
 
-class helper_plugin_parserfunctions extends DokuWiki_Plugin {
-    
+class helper_plugin_parserfunctions extends Plugin
+{
     /**
      * Processes raw function input into normalized parameters, handling pipe escapes
      *
@@ -41,22 +44,21 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
      * @note Empty strings are valid parameters (unlike array_filter)
      * @note Trims only outer whitespace (inner spaces remain)
      */
-    public function parseParameters($input) {
+    public function parseParameters($input)
+    {
         // 1) Replace escaped pipes with temporary marker
         $input = str_replace('%%|%%', '%%TEMP_PIPE%%', $input);
-        
+
         // 2) Split by unescaped pipes
         $params = explode('|', $input);
-        
+
         // 3) Restore escaped pipes
-        $params = array_map(function($param) {
-            return str_replace('%%TEMP_PIPE%%', '%%|%%', $param);
-        }, $params);
+        $params = array_map(fn($param) => str_replace('%%TEMP_PIPE%%', '%%|%%', $param), $params);
 
         // 4) Remove whitespace
-        return array_map('trim', $params);
+        return array_map(trim(...), $params);
     }
-    
+
     /**
      * Parses parameters for a SWITCH parser function and structures them for evaluation
      *
@@ -96,17 +98,18 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
      * @note All case keys and test values are trimmed of whitespace
      * @note Empty strings are valid as both test values and case values
      */
-    public function parseSwitchCases($params) {
+    public function parseSwitchCases($params)
+    {
         $cases = [];
         $default = null;
         $testString = null;
         $lastValue = null;
-        
+
         foreach ($params as $param) {
             $param = str_replace('%%=%%', '%%TEMP_EQUAL%%', $param);
             $parts = explode('=', $param, 2);
-            $parts = array_map('trim', $parts);
-            
+            $parts = array_map(trim(...), $parts);
+
             if (count($parts) === 2) {
                 // Case with explicit value (case = value)
                 $parts[1] = str_replace('%%TEMP_EQUAL%%', '%%=%%', $parts[1]);
@@ -115,7 +118,7 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
             } else {
                 // Case without explicit value (fallthrough or default)
                 $parts[0] = str_replace('%%TEMP_EQUAL%%', '%%=%%', $parts[0]);
-                
+
                 if ($testString === null) {
                     $testString = trim($parts[0]); // First parameter is the test value
                 } elseif (trim($parts[0]) === '#default') {
@@ -125,14 +128,14 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
                 }
             }
         }
-        
+
         return [
             'cases' => $cases,
             'test' => $testString,
             'default' => $default ?? $lastValue // Implicit default is the last value
         ];
     }
-    
+
     /**
      * Checks for the existence of a folder (namespace) or a file (media or page)
      *
@@ -144,17 +147,18 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
      * @param string $target The identifier or path to check
      * @return bool True if it exists (file, page, media, or namespace), false otherwise
      */
-    public function checkExistence($target) {
+    public function checkExistence($target)
+    {
         // Normalize spaces around ':', transform "wiki : help" → "wiki:help"
         $target = preg_replace('/\s*:\s*/', ':', $target);
-        
+
         // If it is a real absolute or relative path, test as file or folder
         if (file_exists($target)) {
             return true;
         }
-        
+
         // If path started with '/', try as relative to DOKU_INC by removing '/'
-        if (strlen($target) > 0 && $target[0] === '/') {
+        if ((string) $target !== '' && $target[0] === '/') {
             $relativePath = ltrim($target, '/');
             $fullPath = DOKU_INC . $relativePath;
             if (file_exists($fullPath)) {
@@ -181,13 +185,13 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
 
         return false;
     }
-    
+
     /**
      * Escape sequence handling (for backwards compatibility)
      *
      * To add more escapes, please refer to:
      * https://www.freeformatter.com/html-entities.html
-     * 
+     *
      * Before 2025-01-18, escape sequences had to use "&&num;NUMBER;" instead of
      * "&#;NUMBER;", because "#" was not escaped.
      *
@@ -199,9 +203,10 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
      * escaped only by wrapping them in '%%', following the standard DokuWiki
      * syntax. So, the escapes below are DEPRECATED, but kept for backwards
      * compatibility.
-     * 
+     *
      */
-    public function processEscapes($text) {
+    public function processEscapes($text)
+    {
         // DEPRECATED, but kept for backwards compatibility:
         $escapes = [
             "&&num;61;"  => "=",
@@ -210,39 +215,43 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
             "&&num;125;" => "%%}%%",
             "&num;"      => "#" // Always leave this as the last element!
         ];
-        
+
         foreach ($escapes as $key => $value) {
             $text = str_replace($key, $value, $text);
         }
-        
+
         return $text;
     }
-    
+
     /**
      * Format error messages consistently
      */
-    public function formatError($type, $function, $messageKey) {
+    public function formatError($type, $function, $messageKey)
+    {
         $wrapPluginExists = file_exists(DOKU_INC . 'lib/plugins/wrap');
-        
+
         $errorMsg = '**' . $this->getLang('error') . ' ' . $function . ': '
                     . $this->getLang($messageKey) . '**';
-        
+
         if ($wrapPluginExists) {
             return "<wrap $type>$errorMsg</wrap>";
         }
-        
+
         return $errorMsg;
     }
 
     /**
      * Evaluates a mathematical expression consistently
      */
-    public function evaluateMathExpression($expr) {
+    public function evaluateMathExpression($expr)
+    {
         $funcName = 'expr';
         $expr = trim($expr);
 
         // Rejects characters outside the permitted set
-        if (!preg_match('/^(
+        if (
+            !preg_match(
+                '/^(
                             \s*|
                             \b(?:and|or|xor|not)\b|                # Reserved words first
                             ==|!=|<=|>=|<|>|                       # Comparisons
@@ -250,8 +259,10 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
                             \(|\)|                                 # Parentheses
                             &&|\|\||!|                             # Symbolic logics
                             [0-9]+(\.[0-9]+)?([eE][\+\-]?[0-9]+)?  # Numbers with period and exponent
-                        )+$/ix'
-                        , $expr)) {
+                        )+$/ix',
+                $expr
+            )
+        ) {
             return $this->formatError('alert', $funcName, 'invalid_expression');
         }
 
@@ -259,19 +270,17 @@ class helper_plugin_parserfunctions extends DokuWiki_Plugin {
             $expr = preg_replace('/\bnot\b/i', '!', $expr);
             // Simple evaluation
             $result = eval('return (' . $expr . ');');
-            
+
             if (!is_numeric($result) || is_infinite($result) || is_nan($result)) {
                 if (is_bool($result)) {
                     return $result ? 1 : 0;
-                } else {
-                    return $this->formatError('alert', $funcName, 'undefined_result');
                 }
+                return $this->formatError('alert', $funcName, 'undefined_result');
             }
-            
+
             return $result;
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             return $this->formatError('alert', $funcName, 'evaluation_error');
         }
     }
 }
-

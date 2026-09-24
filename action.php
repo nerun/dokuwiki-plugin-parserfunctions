@@ -1,4 +1,5 @@
 <?php
+
 /**
  * DokuWiki Plugin parserfunctions (Action Component)
  *
@@ -14,14 +15,6 @@ use dokuwiki\Extension\Event;
 
 class action_plugin_parserfunctions extends ActionPlugin
 {
-    /** @var helper_plugin_parserfunctions */
-    private $helper;
-
-    public function __construct()
-    {
-        $this->helper = plugin_load('helper', 'parserfunctions');
-    }
-
     /** @inheritDoc */
     public function register(EventHandler $controller)
     {
@@ -37,6 +30,7 @@ class action_plugin_parserfunctions extends ActionPlugin
     {
         $text = $event->data;
         $text = $this->processParserFunctions($text);
+
         $event->data = $text;
     }
 
@@ -47,7 +41,8 @@ class action_plugin_parserfunctions extends ActionPlugin
         /* The "s" modifier makes . catch line breaks.
          * The "i" modifier ignores case (if someone writes <CODE>).
          */
-        $text = preg_replace_callback('/%%.*?%%|<(nowiki|code|file|html)[^>]*>.*?<\/\1>/si', function ($matches) use (&$protectedBlocks) {
+        $text = preg_replace_callback('/%%.*?%%|<(nowiki|code|file|html)[^>]*>.*?<\/\1>/si',
+            function ($matches) use (&$protectedBlocks) {
             $key = '@@ESC' . count($protectedBlocks) . '@@';
             $protectedBlocks[$key] = $matches[0];
             return $key;
@@ -93,4 +88,3 @@ class action_plugin_parserfunctions extends ActionPlugin
         return false; // Malformed
     }
 }
-
