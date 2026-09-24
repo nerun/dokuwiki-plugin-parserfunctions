@@ -41,12 +41,16 @@ class action_plugin_parserfunctions extends ActionPlugin
         /* The "s" modifier makes . catch line breaks.
          * The "i" modifier ignores case (if someone writes <CODE>).
          */
-        $text = preg_replace_callback('/%%.*?%%|<(nowiki|code|file|html)[^>]*>.*?<\/\1>/si',
+        $pattern = '/%%.*?%%|<(nowiki|code|file|html)[^>]*>.*?<\/\1>/si';
+        $text = preg_replace_callback(
+            $pattern,
             function ($matches) use (&$protectedBlocks) {
-            $key = '@@ESC' . count($protectedBlocks) . '@@';
-            $protectedBlocks[$key] = $matches[0];
-            return $key;
-        }, $text);
+                $key = '@@ESC' . count($protectedBlocks) . '@@';
+                $protectedBlocks[$key] = $matches[0];
+                return $key;
+            },
+            $text
+        );
 
         // 2. Processes functions normally
         $index = 0;
