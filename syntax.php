@@ -63,7 +63,8 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
          *
          * $this->Lexer->addSpecialPattern('\{\{#.+?#\}\}', $mode, 'plugin_parserfunctions');
          * Captures nested functions up to level-1:
-         * $this->Lexer->addSpecialPattern('\{\{#[[:alnum:]]+:(?:(?:[^\{#]*?\{\{.*?#\}\})|.*?)+?#\}\}', $mode, 'plugin_parserfunctions');
+         * $this->Lexer->addSpecialPattern('\{\{#[[:alnum:]]+:(?:(?:[^\{#]*?\{\{.*?#\}\})|.*?)+?#\}\}',
+         *                                 $mode, 'plugin_parserfunctions');
          *
          * SEE action.php
          */
@@ -94,15 +95,15 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
 
         switch ($funcName) {
             case 'if':
-                return $this->_IF($params, $funcName);
+                return $this->fnIF($params, $funcName);
             case 'ifeq':
-                return $this->_IFEQ($params, $funcName);
+                return $this->fnIFEQ($params, $funcName);
             case 'ifexist':
-                return $this->_IFEXIST($params, $funcName);
+                return $this->fnIFEXIST($params, $funcName);
             case 'switch':
-                return $this->_SWITCH($params, $funcName);
+                return $this->fnSWITCH($params, $funcName);
             case 'expr':
-                return $this->_EXPR($params, $funcName);
+                return $this->fnEXPR($params, $funcName);
             default:
                 return $this->helper->formatError('important', $funcName, 'no_such_function');
         }
@@ -204,12 +205,12 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
         $data = $this->helper->processEscapes($data);
 
         // Do not use <div></div> because we need inline substitution!
-		$data = $renderer->render_text($data, 'xhtml');
-		// Remove the first '<p>' and the last '</p>'
-		if (substr($data, 0, 3) === '<p>' && substr($data, -4) === '</p>') {
+        $data = $renderer->render_text($data, 'xhtml');
+        // Remove the first '<p>' and the last '</p>'
+        if (substr($data, 0, 3) === '<p>' && substr($data, -4) === '</p>') {
             $data = substr($data, 3, -4);
         }
-		$renderer->doc .= $data;
+        $renderer->doc .= $data;
 
         return true;
     }
@@ -220,7 +221,7 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * {{#if: test string | value if test string is not empty | value if test
      * string is empty (or only white space) #}}
      */
-    function _IF($params, $funcName)
+    function fnIF($params, $funcName)
     {
         if ( count($params) < 1 ) {
             $result = $this->helper->formatError('alert', $funcName, 'not_enough_params');
@@ -240,7 +241,7 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * {{#ifeq: 1st parameter | 2nd parameter | 3rd parameter | 4th parameter #}}
      * {{#ifeq: string 1 | string 2 | value if identical | value if different #}}
      */
-    function _IFEQ($params, $funcName)
+    function fnIFEQ($params, $funcName)
     {
         if ( count($params) < 2 ) {
             $result = $this->helper->formatError('alert', $funcName, 'not_enough_params');
@@ -272,7 +273,7 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * @param string $funcName Name of the parser function (for error messages)
      * @return string Rendered output based on existence check
      */
-    function _IFEXIST($params, $funcName)
+    function fnIFEXIST($params, $funcName)
     {
         if (count($params) < 1) {
             return $this->helper->formatError('alert', $funcName, 'not_enough_params');
@@ -299,7 +300,7 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * | default result
      * #}}
      */
-    function _SWITCH($params, $funcName) {
+    function fnSWITCH($params, $funcName) {
         if (count($params) < 2) {
             return $this->helper->formatError('alert', $funcName, 'not_enough_params');
         }
@@ -320,7 +321,7 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * This function evaluates a mathematical expression and returns the
      * calculated value.
      */
-    private function _EXPR($params, $funcName) {
+    private function fnEXPR($params, $funcName) {
         if (!isset($params[0])) {
             return $this->helper->formatError('alert', $funcName, 'empty_test_parameter');
         }

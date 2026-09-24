@@ -1,4 +1,5 @@
-<?php
+<?php // phpcs:ignore PSR1.Files.SideEffects.FoundWithSymbols
+
 /**
  * DokuWiki Plugin parserfunctions (Helper Component)
  * 
