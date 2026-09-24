@@ -1,15 +1,18 @@
 <?php
+
 /**
  * DokuWiki Plugin parserfunctions (Syntax Component)
  *
  * @license  GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author   Daniel "Nerun" Rodrigues <danieldiasr@gmail.com>
  * @created  Sat, 09 Dec 2023 14:59 -0300
- * 
+ *
  * This is my first plugin, and I don't even know PHP well, that's why it's full
  * of comments, but I'll leave it that way so I can consult it in the future.
- * 
+ *
  */
+
+use dokuwiki\Parsing\Handler;
 use dokuwiki\Extension\SyntaxPlugin;
 use dokuwiki\Utf8\PhpString;
 
@@ -18,7 +21,8 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
     /** @var helper_plugin_parserfunctions $helper */
     private $helper;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->helper = plugin_load('helper', 'parserfunctions');
     }
 
@@ -74,7 +78,7 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
     public function resolveFunction($text)
     {
         // Remove {{# and #}} delimiters if present
-        if (substr($text, 0, 3) === '{{#' && substr($text, -3) === '#}}') {
+        if (str_starts_with($text, '{{#') && str_ends_with($text, '#}}')) {
             $text = substr($text, 3, -3);
         }
 
@@ -93,20 +97,14 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
 
         $params = $this->helper->parseParameters($paramsText);
 
-        switch ($funcName) {
-            case 'if':
-                return $this->fnIF($params, $funcName);
-            case 'ifeq':
-                return $this->fnIFEQ($params, $funcName);
-            case 'ifexist':
-                return $this->fnIFEXIST($params, $funcName);
-            case 'switch':
-                return $this->fnSWITCH($params, $funcName);
-            case 'expr':
-                return $this->fnEXPR($params, $funcName);
-            default:
-                return $this->helper->formatError('important', $funcName, 'no_such_function');
-        }
+        return match ($funcName) {
+            'if' => $this->fnIF($params, $funcName),
+            'ifeq' => $this->fnIFEQ($params, $funcName),
+            'ifexist' => $this->fnIFEXIST($params, $funcName),
+            'switch' => $this->fnSWITCH($params, $funcName),
+            'expr' => $this->fnEXPR($params, $funcName),
+            default => $this->helper->formatError('important', $funcName, 'no_such_function'),
+        };
     }
 
     // @author  ChatGPT -- Wed, 02 jul 2025 12:04:42 -0300
@@ -145,10 +143,11 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
     }
 
     /** @inheritDoc */
-    public function handle($match, $state, $pos, Doku_Handler $handler) {
+    public function handle($match, $state, $pos, Handler $handler)
+    {
         /* This method is only called if the Lexer, in the connectTo() method,
          * finds a $match.
-         * 
+         *
          * READ: https://www.dokuwiki.org/devel:syntax_plugins#handle_method
          * This is the part of your plugin which should do all the work. Before
          * DokuWiki renders the wiki page it creates a list of instructions for
@@ -159,19 +158,19 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
          * Parameters:
          *
          *   $match   (string)  — The text matched by the patterns
-         *    
+         *
          *   $state   (int)     — The lexer state for the match, representing
          *                        the type of pattern which triggered this call
          *                        to handle(): DOKU_LEXER_SPECIAL — a pattern
          *                        set by addSpecialPattern().
-         *   
+         *
          *   $pos     (int)     — The character position of the matched text.
-         *   
+         *
          *   $handler           — Object Reference to the Doku_Handler object.
          */
         return $this->resolveFunction($match);
     }
-    
+
     /** @inheritDoc */
     public function render($mode, Doku_Renderer $renderer, $data)
     {
@@ -192,70 +191,70 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
          *               method. The render() must interpret the instruction and
          *               generate the appropriate output.
          */
-        
+
         if ($mode !== 'xhtml') {
             return false;
         }
-        
+
         if (!$data) {
             return false;
         }
-        
+
         // escape sequences
         $data = $this->helper->processEscapes($data);
 
         // Do not use <div></div> because we need inline substitution!
         $data = $renderer->render_text($data, 'xhtml');
         // Remove the first '<p>' and the last '</p>'
-        if (substr($data, 0, 3) === '<p>' && substr($data, -4) === '</p>') {
+        if (str_starts_with($data, '<p>') && str_ends_with($data, '</p>')) {
             $data = substr($data, 3, -4);
         }
         $renderer->doc .= $data;
 
         return true;
     }
-    
+
     /**
      * ========== #IF
      * {{#if: 1st parameter | 2nd parameter | 3rd parameter #}}
      * {{#if: test string | value if test string is not empty | value if test
      * string is empty (or only white space) #}}
      */
-    function fnIF($params, $funcName)
+    public function fnIF($params, $funcName)
     {
-        if ( count($params) < 1 ) {
+        if (count($params) < 1) {
             $result = $this->helper->formatError('alert', $funcName, 'not_enough_params');
         } else {
-            if ( !empty($params[0]) ) {
+            if (!empty($params[0])) {
                 $result = $params[1] ?? '';
             } else {
                 $result = $params[2] ?? '';
             }
         }
-        
+
         return $result;
     }
-    
+
     /**
      * ========== #IFEQ
      * {{#ifeq: 1st parameter | 2nd parameter | 3rd parameter | 4th parameter #}}
      * {{#ifeq: string 1 | string 2 | value if identical | value if different #}}
      */
-    function fnIFEQ($params, $funcName)
+    public function fnIFEQ($params, $funcName)
     {
-        if ( count($params) < 2 ) {
+        if (count($params) < 2) {
             $result = $this->helper->formatError('alert', $funcName, 'not_enough_params');
         } else {
-            if ( $params[0] == $params[1] ) {
+            if ($params[0] == $params[1]) {
                 $result = $params[2] ?? '';
             } else {
                 $result = $params[3] ?? '';
             }
         }
-        
+
         return $result;
     }
-    
+
     /**
      * ======= #IFEXIST
      * Syntax: {{#ifexist: target | if-true | if-false #}}
@@ -273,24 +272,24 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * @param string $funcName Name of the parser function (for error messages)
      * @return string Rendered output based on existence check
      */
-    function fnIFEXIST($params, $funcName)
+    public function fnIFEXIST($params, $funcName)
     {
         if (count($params) < 1) {
             return $this->helper->formatError('alert', $funcName, 'not_enough_params');
         }
-        
+
         $target = trim($params[0]);
         if ($target === '') {
             return $this->helper->formatError('alert', $funcName, 'empty_test_parameter');
         }
-        
+
         $exists = $this->helper->checkExistence($target);
-        
+
         return $exists
             ? ($params[1] ?? '')
             : ($params[2] ?? '');
     }
-    
+
     /**
      * ========== #SWITCH
      * {{#switch: comparison string
@@ -300,18 +299,19 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * | default result
      * #}}
      */
-    function fnSWITCH($params, $funcName) {
+    public function fnSWITCH($params, $funcName)
+    {
         if (count($params) < 2) {
             return $this->helper->formatError('alert', $funcName, 'not_enough_params');
         }
 
         $parsed = $this->helper->parseSwitchCases($params);
-        
+
         // Checks if the test string exists as a key in the switch cases array
         if (array_key_exists($parsed['test'], $parsed['cases'])) {
             return $parsed['cases'][$parsed['test']]; // ← May return empty string
         }
-        
+
         // Returns the default (explicit or implicit) only if the case does not exist
         return $parsed['default'] ?? '';
     }
@@ -321,7 +321,8 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
      * This function evaluates a mathematical expression and returns the
      * calculated value.
      */
-    private function fnEXPR($params, $funcName) {
+    private function fnEXPR($params, $funcName)
+    {
         if (!isset($params[0])) {
             return $this->helper->formatError('alert', $funcName, 'empty_test_parameter');
         }
@@ -329,4 +330,3 @@ class syntax_plugin_parserfunctions extends SyntaxPlugin
         return $this->helper->evaluateMathExpression($params[0]);
     }
 }
-
